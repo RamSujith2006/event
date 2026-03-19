@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Gallery</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .gallery-container {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .gallery-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .gallery-header h1 {
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        
+        .video-item {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; /* 16:9 aspect ratio */
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .video-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .video-item video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .video-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .video-overlay:hover {
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .play-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #333;
+            transition: transform 0.3s ease;
+        }
+        
+        .video-overlay:hover .play-button {
+            transform: scale(1.1);
+        }
+        
+        .no-videos {
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            margin-top: 3rem;
+        }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            margin-top: 3rem;
+        }
+        
+        /* Modal for full-size video */
+        .video-modal {
+            display: none;
+            position: fixed;
+            z-index: 3000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(5px);
+        }
+        
+        .video-modal-content {
+            position: relative;
+            margin: 5% auto;
+            padding: 0;
+            width: 90%;
+            max-width: 900px;
+            max-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .video-modal-content video {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+        
+        .video-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            z-index: 3001;
+        }
+        
+        .video-modal-close:hover {
+            color: #bbb;
+        }
+        
+        @media (max-width: 768px) {
+            .video-grid {
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 1rem;
+            }
+            
+            .gallery-header h1 {
+                font-size: 2rem;
+            }
+            
+            .play-button {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="gallery-container">
+        <div class="gallery-header">
+            <h1>Video Gallery</h1>
+            <a href="index.html" class="back-btn">← Back to Home</a>
+        </div>
+        
+        <div id="loadingMessage" class="loading">Loading videos...</div>
+        <div id="videoGrid" class="video-grid" style="display: none;"></div>
+        <div id="noVideosMessage" class="no-videos" style="display: none;">No videos available.</div>
+    </div>
+    
+    <!-- Video Modal -->
+    <div id="videoModal" class="video-modal">
+        <span class="video-modal-close" onclick="closeVideoModal()">&times;</span>
+        <div class="video-modal-content">
+            <video id="modalVideo" controls>
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
+    
+    <script>
+        let currentVideoSrc = '';
+        
+        async function loadVideos() {
+            try {
+                const response = await fetch('/api/media/video');
+                const videos = await response.json();
+                
+                const loadingMessage = document.getElementById('loadingMessage');
+                const videoGrid = document.getElementById('videoGrid');
+                const noVideosMessage = document.getElementById('noVideosMessage');
+                
+                loadingMessage.style.display = 'none';
+                
+                if (videos.length === 0) {
+                    noVideosMessage.style.display = 'block';
+                    return;
+                }
+                
+                videoGrid.innerHTML = '';
+                
+                videos.forEach(video => {
+                    const videoItem = document.createElement('div');
+                    videoItem.className = 'video-item';
+                    
+                    const videoElement = document.createElement('video');
+                    videoElement.src = `/uploads/videos/${video.filename}`;
+                    videoElement.alt = video.originalName || 'Video';
+                    videoElement.muted = true;
+                    videoElement.loop = true;
+                    videoElement.playsInline = true;
+                    
+                    const overlay = document.createElement('div');
+                    overlay.className = 'video-overlay';
+                    overlay.onclick = () => openVideoModal(video.filename);
+                    
+                    const playButton = document.createElement('div');
+                    playButton.className = 'play-button';
+                    playButton.innerHTML = '▶';
+                    
+                    overlay.appendChild(playButton);
+                    
+                    // Auto-play preview on hover
+                    videoItem.addEventListener('mouseenter', () => {
+                        videoElement.play();
+                    });
+                    
+                    videoItem.addEventListener('mouseleave', () => {
+                        videoElement.pause();
+                        videoElement.currentTime = 0;
+                    });
+                    
+                    videoItem.appendChild(videoElement);
+                    videoItem.appendChild(overlay);
+                    videoGrid.appendChild(videoItem);
+                });
+                
+                videoGrid.style.display = 'grid';
+                
+            } catch (error) {
+                console.error('Error loading videos:', error);
+                document.getElementById('loadingMessage').style.display = 'none';
+                document.getElementById('noVideosMessage').style.display = 'block';
+                document.getElementById('noVideosMessage').textContent = 'Error loading videos.';
+            }
+        }
+        
+        function openVideoModal(filename) {
+            const modal = document.getElementById('videoModal');
+            const modalVideo = document.getElementById('modalVideo');
+            
+            currentVideoSrc = `/uploads/videos/${filename}`;
+            modalVideo.src = currentVideoSrc;
+            modal.style.display = 'block';
+            
+            // Start playing the video
+            modalVideo.play();
+        }
+        
+        function closeVideoModal() {
+            const modal = document.getElementById('videoModal');
+            const modalVideo = document.getElementById('modalVideo');
+            
+            // Pause and reset video
+            modalVideo.pause();
+            modalVideo.currentTime = 0;
+            
+            modal.style.display = 'none';
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('videoModal');
+            if (event.target === modal) {
+                closeVideoModal();
+            }
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeVideoModal();
+            }
+        });
+        
+        // Load videos when page loads
+        document.addEventListener('DOMContentLoaded', loadVideos);
+    </script>
+</body>
+</html>

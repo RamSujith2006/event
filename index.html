@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo & Video Gallery</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Media Gallery</h1>
+    </header>
+    
+    <main>
+        <section class="media-section">
+            <div class="media-card" onclick="navigateTo('photos')">
+                <div class="media-icon">📸</div>
+                <h2>Photos</h2>
+                <p>View photo collection</p>
+            </div>
+            
+            <div class="media-card" onclick="navigateTo('videos')">
+                <div class="media-icon">🎥</div>
+                <h2>Videos</h2>
+                <p>View video collection</p>
+            </div>
+        </section>
+    </main>
+    
+    <!-- Floating Admin Button -->
+    <div class="floating-admin-btn" onclick="showPasswordModal()">
+        <span>⚙️</span>
+    </div>
+    
+    <!-- Password Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closePasswordModal()">&times;</span>
+            <h2>Admin Access</h2>
+            <input type="password" id="passwordInput" placeholder="Enter password">
+            <button onclick="checkPassword()">Submit</button>
+        </div>
+    </div>
+    
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAdminPanel()">&times;</span>
+            <h2>Admin Panel</h2>
+            <div class="admin-options">
+                <button onclick="showAddOption('photo')">Add Photo</button>
+                <button onclick="showAddOption('video')">Add Video</button>
+                <button onclick="showRemoveOption('photo')">Remove Photo</button>
+                <button onclick="showRemoveOption('video')">Remove Video</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Media Modal -->
+    <div id="addMediaModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAddMediaModal()">&times;</span>
+            <h2 id="addMediaTitle">Add Media</h2>
+            <input type="file" id="mediaFileInput" accept="">
+            <button onclick="uploadMedia()">Upload</button>
+        </div>
+    </div>
+    
+    <!-- Remove Media Modal -->
+    <div id="removeMediaModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeRemoveMediaModal()">&times;</span>
+            <h2 id="removeMediaTitle">Remove Media</h2>
+            <div id="mediaList" class="media-list"></div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
