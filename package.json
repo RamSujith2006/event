@@ -4,8 +4,8 @@
   "description": "Photo and video gallery with admin functionality",
   "main": "server.js",
   "scripts": {
-    "start": "node server-mongodb.js",
-    "dev": "nodemon server-mongodb.js"
+    "start": "node api/index.js",
+    "dev": "nodemon api/index.js"
   },
   "dependencies": {
     "express": "^4.18.2",
