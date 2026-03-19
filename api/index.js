@@ -19,13 +19,39 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..')));
 
-// Connect to MongoDB
+// Connect to MongoDB with caching for serverless
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/media-gallery';
 console.log('Connecting to MongoDB...');
-console.log('URI starts with:', mongoUri.substring(0, 30) + '...');
-mongoose.connect(mongoUri)
-    .then(() => console.log('Connected to MongoDB successfully'))
-    .catch(err => console.error('MongoDB connection error:', err.message));
+
+let cachedConnection = null;
+
+async function connectToMongo() {
+    if (cachedConnection && mongoose.connection.readyState === 1) {
+        return cachedConnection;
+    }
+    
+    cachedConnection = await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 10000,
+        connectTimeoutMS: 10000,
+    });
+    console.log('Connected to MongoDB successfully');
+    return cachedConnection;
+}
+
+// Start connection immediately
+connectToMongo().catch(err => console.error('MongoDB connection error:', err.message));
+
+// Middleware to ensure MongoDB is connected before handling API requests
+app.use('/api', async (req, res, next) => {
+    if (req.path === '/health') return next(); // skip for health check
+    try {
+        await connectToMongo();
+        next();
+    } catch (err) {
+        console.error('MongoDB middleware error:', err.message);
+        res.status(500).json({ error: 'Database connection failed', details: err.message });
+    }
+});
 
 // Health check endpoint for debugging
 app.get('/api/health', (req, res) => {
