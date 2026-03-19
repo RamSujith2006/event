@@ -35,8 +35,8 @@ const dataDir = isVercel ? '/tmp/data' : path.join(__dirname, 'data');
 // Database file paths
 const dbPath = path.join(dataDir, 'media.json');
 
-// Initialize database if it doesn't exist
-if (!fs.existsSync(dbPath)) {
+// Initialize database if it doesn't exist (local development only)
+if (!isVercel && !fs.existsSync(dbPath)) {
     fs.writeJsonSync(dbPath, { photos: [], videos: [] });
 }
 

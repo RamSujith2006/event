@@ -85,19 +85,14 @@ const upload = multer({
         fileSize: 100 * 1024 * 1024 // 100MB limit
     },
     fileFilter: function (req, file, cb) {
-        const type = req.body.type || 'photo';
-        
-        if (type === 'photo') {
-            if (!file.mimetype.startsWith('image/')) {
-                return cb(new Error('Only image files are allowed for photos.'));
-            }
-        } else if (type === 'video') {
-            if (!file.mimetype.startsWith('video/')) {
-                return cb(new Error('Only video files are allowed for videos.'));
-            }
+        // Accept both image and video files.
+        // Note: req.body.type is NOT available here because multer
+        // parses body fields AFTER the file in multipart/form-data.
+        if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image and video files are allowed.'));
         }
-        
-        cb(null, true);
     }
 });
 
