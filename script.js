@@ -97,7 +97,7 @@ async function uploadMedia() {
     
     try {
         // Step 1: Upload directly to Cloudinary from client
-        const cloudName = 'YOUR_CLOUD_NAME'; // Replace with your Cloudinary cloud name
+        const cloudName = 'dwoz5fuqg';
         const uploadPreset = 'event_gallery'; // Unsigned upload preset name
         
         const cloudinaryFormData = new FormData();
