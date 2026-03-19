@@ -8,19 +8,29 @@ const { v4: uuidv4 } = require('uuid');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Check if running on Vercel
+const isVercel = process.env.VERCEL;
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
 
-// Create directories if they don't exist
-const photosDir = path.join(__dirname, 'uploads', 'photos');
-const videosDir = path.join(__dirname, 'uploads', 'videos');
-const dataDir = path.join(__dirname, 'data');
+// Create directories if they don't exist (only for local development)
+if (!isVercel) {
+    const photosDir = path.join(__dirname, 'uploads', 'photos');
+    const videosDir = path.join(__dirname, 'uploads', 'videos');
+    const dataDir = path.join(__dirname, 'data');
 
-fs.ensureDirSync(photosDir);
-fs.ensureDirSync(videosDir);
-fs.ensureDirSync(dataDir);
+    fs.ensureDirSync(photosDir);
+    fs.ensureDirSync(videosDir);
+    fs.ensureDirSync(dataDir);
+}
+
+// For Vercel, use /tmp directory
+const photosDir = isVercel ? '/tmp/uploads/photos' : path.join(__dirname, 'uploads', 'photos');
+const videosDir = isVercel ? '/tmp/uploads/videos' : path.join(__dirname, 'uploads', 'videos');
+const dataDir = isVercel ? '/tmp/data' : path.join(__dirname, 'data');
 
 // Database file paths
 const dbPath = path.join(dataDir, 'media.json');
@@ -213,8 +223,13 @@ app.get('/videos.html', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Photo gallery: http://localhost:${PORT}/photos.html`);
-    console.log(`Video gallery: http://localhost:${PORT}/videos.html`);
-});
+if (isVercel) {
+    // Export for Vercel
+    module.exports = app;
+} else {
+    app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+        console.log(`Photo gallery: http://localhost:${PORT}/photos.html`);
+        console.log(`Video gallery: http://localhost:${PORT}/videos.html`);
+    });
+}
