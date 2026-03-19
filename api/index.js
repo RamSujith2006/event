@@ -20,9 +20,27 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '..')));
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/media-gallery')
-    .then(() => console.log('Connected to MongoDB'))
-    .catch(err => console.error('MongoDB connection error:', err));
+const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/media-gallery';
+console.log('Connecting to MongoDB...');
+console.log('URI starts with:', mongoUri.substring(0, 30) + '...');
+mongoose.connect(mongoUri)
+    .then(() => console.log('Connected to MongoDB successfully'))
+    .catch(err => console.error('MongoDB connection error:', err.message));
+
+// Health check endpoint for debugging
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        mongoState: mongoose.connection.readyState,
+        mongoStates: { 0: 'disconnected', 1: 'connected', 2: 'connecting', 3: 'disconnecting' },
+        currentState: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState],
+        env: {
+            hasMongoUri: !!process.env.MONGODB_URI,
+            isVercel: !!process.env.VERCEL,
+            nodeEnv: process.env.NODE_ENV
+        }
+    });
+});
 
 // Multer configuration for file uploads
 const storage = multer.memoryStorage();
