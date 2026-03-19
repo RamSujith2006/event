@@ -187,10 +187,10 @@
                 photos.forEach(photo => {
                     const photoItem = document.createElement('div');
                     photoItem.className = 'photo-item';
-                    photoItem.onclick = () => openPhotoModal(photo.filename);
+                    photoItem.onclick = () => openPhotoModal(photo.url);
                     
                     const img = document.createElement('img');
-                    img.src = `/uploads/photos/${photo.filename}`;
+                    img.src = photo.url;
                     img.alt = photo.originalName || 'Photo';
                     img.loading = 'lazy';
                     
@@ -208,11 +208,11 @@
             }
         }
         
-        function openPhotoModal(filename) {
+        function openPhotoModal(url) {
             const modal = document.getElementById('photoModal');
             const modalImage = document.getElementById('modalImage');
             
-            modalImage.src = `/uploads/photos/${filename}`;
+            modalImage.src = url;
             modal.style.display = 'block';
         }
         

@@ -235,7 +235,7 @@
                     videoItem.className = 'video-item';
                     
                     const videoElement = document.createElement('video');
-                    videoElement.src = `/uploads/videos/${video.filename}`;
+                    videoElement.src = video.url;
                     videoElement.alt = video.originalName || 'Video';
                     videoElement.muted = true;
                     videoElement.loop = true;
@@ -243,7 +243,7 @@
                     
                     const overlay = document.createElement('div');
                     overlay.className = 'video-overlay';
-                    overlay.onclick = () => openVideoModal(video.filename);
+                    overlay.onclick = () => openVideoModal(video.url);
                     
                     const playButton = document.createElement('div');
                     playButton.className = 'play-button';
@@ -276,11 +276,11 @@
             }
         }
         
-        function openVideoModal(filename) {
+        function openVideoModal(url) {
             const modal = document.getElementById('videoModal');
             const modalVideo = document.getElementById('modalVideo');
             
-            currentVideoSrc = `/uploads/videos/${filename}`;
+            currentVideoSrc = url;
             modalVideo.src = currentVideoSrc;
             modal.style.display = 'block';
             
