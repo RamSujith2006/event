@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+const cloudinary = require('cloudinary').v2;
 const Media = require('../models/Media');
 
 dotenv.config();
@@ -14,9 +15,16 @@ const PORT = process.env.PORT || 3000;
 // Check if running on Vercel
 const isVercel = process.env.VERCEL;
 
+// Configure Cloudinary
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '100mb' }));
 app.use(express.static(path.join(__dirname, '..')));
 
 // Connect to MongoDB with caching for serverless
@@ -62,6 +70,7 @@ app.get('/api/health', (req, res) => {
         currentState: ['disconnected', 'connected', 'connecting', 'disconnecting'][mongoose.connection.readyState],
         env: {
             hasMongoUri: !!process.env.MONGODB_URI,
+            hasCloudinary: !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET),
             isVercel: !!process.env.VERCEL,
             nodeEnv: process.env.NODE_ENV
         }
@@ -92,6 +101,20 @@ const upload = multer({
     }
 });
 
+// Helper: Upload buffer to Cloudinary
+function uploadToCloudinary(buffer, options) {
+    return new Promise((resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+            options,
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+            }
+        );
+        uploadStream.end(buffer);
+    });
+}
+
 // API Routes
 
 // Get media list
@@ -120,7 +143,42 @@ app.get('/api/media/:type', async (req, res) => {
     }
 });
 
-// Upload media
+// Save media metadata after client-side Cloudinary upload
+app.post('/api/save-media', async (req, res) => {
+    try {
+        const { url, publicId, originalName, type } = req.body;
+        
+        if (!url || !type) {
+            return res.status(400).json({ error: 'Missing required fields: url, type' });
+        }
+        
+        const media = new Media({
+            filename: originalName || 'unknown',
+            originalName: originalName || 'unknown',
+            type: type,
+            url: url,
+            cloudinaryPublicId: publicId || null
+        });
+        
+        await media.save();
+        
+        res.json({ 
+            message: 'Media saved successfully',
+            media: {
+                id: media._id,
+                filename: media.filename,
+                originalName: media.originalName,
+                uploadDate: media.uploadDate,
+                url: media.url
+            }
+        });
+    } catch (error) {
+        console.error('Save media error:', error);
+        res.status(500).json({ error: 'Failed to save media', details: error.message });
+    }
+});
+
+// Upload media via Cloudinary (server-side fallback for small files)
 app.post('/api/upload', upload.single('media'), async (req, res) => {
     try {
         if (!req.file) {
@@ -129,17 +187,22 @@ app.post('/api/upload', upload.single('media'), async (req, res) => {
         
         const type = req.body.type || 'photo';
         
-        // For Vercel, we'll use a base64 URL or external storage
-        // For now, we'll create a data URL
-        const base64Data = req.file.buffer.toString('base64');
-        const mimeType = req.file.mimetype;
-        const url = `data:${mimeType};base64,${base64Data}`;
+        // Upload to Cloudinary
+        const resourceType = type === 'video' ? 'video' : 'image';
+        const cloudinaryResult = await uploadToCloudinary(req.file.buffer, {
+            resource_type: resourceType,
+            folder: `event-gallery/${type}s`,
+            public_id: `${Date.now()}-${req.file.originalname.replace(/\.[^/.]+$/, '')}`,
+        });
+        
+        const url = cloudinaryResult.secure_url;
         
         const media = new Media({
             filename: req.file.originalname,
             originalName: req.file.originalname,
             type: type,
-            url: url
+            url: url,
+            cloudinaryPublicId: cloudinaryResult.public_id
         });
         
         await media.save();
@@ -156,11 +219,11 @@ app.post('/api/upload', upload.single('media'), async (req, res) => {
         });
     } catch (error) {
         console.error('Upload error:', error);
-        res.status(500).json({ error: 'Failed to upload file' });
+        res.status(500).json({ error: 'Failed to upload file', details: error.message });
     }
 });
 
-// Delete media
+// Delete media (also removes from Cloudinary)
 app.delete('/api/media/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -169,6 +232,13 @@ app.delete('/api/media/:id', async (req, res) => {
         
         if (!media) {
             return res.status(404).json({ error: 'Media not found' });
+        }
+        
+        // Also delete from Cloudinary if we have the public_id
+        if (media.cloudinaryPublicId) {
+            const resourceType = media.type === 'video' ? 'video' : 'image';
+            await cloudinary.uploader.destroy(media.cloudinaryPublicId, { resource_type: resourceType })
+                .catch(err => console.error('Cloudinary delete error (non-fatal):', err.message));
         }
         
         res.json({ message: 'Media deleted successfully' });

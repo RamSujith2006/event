@@ -89,27 +89,63 @@ async function uploadMedia() {
         return;
     }
     
-    const formData = new FormData();
-    formData.append('media', file);
-    formData.append('type', currentMediaType);
+    // Show uploading state
+    const uploadBtn = document.querySelector('#addMediaModal button[onclick="uploadMedia()"]');
+    const originalText = uploadBtn.textContent;
+    uploadBtn.textContent = 'Uploading...';
+    uploadBtn.disabled = true;
     
     try {
-        const response = await fetch('/api/upload', {
+        // Step 1: Upload directly to Cloudinary from client
+        const cloudName = 'YOUR_CLOUD_NAME'; // Replace with your Cloudinary cloud name
+        const uploadPreset = 'event_gallery'; // Unsigned upload preset name
+        
+        const cloudinaryFormData = new FormData();
+        cloudinaryFormData.append('file', file);
+        cloudinaryFormData.append('upload_preset', uploadPreset);
+        cloudinaryFormData.append('folder', `event-gallery/${currentMediaType}s`);
+        
+        const resourceType = currentMediaType === 'video' ? 'video' : 'image';
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+        
+        const cloudinaryResponse = await fetch(cloudinaryUrl, {
             method: 'POST',
-            body: formData
+            body: cloudinaryFormData
         });
         
-        const result = await response.json();
+        if (!cloudinaryResponse.ok) {
+            const errorData = await cloudinaryResponse.json();
+            throw new Error(errorData.error?.message || 'Cloudinary upload failed');
+        }
         
-        if (response.ok) {
+        const cloudinaryResult = await cloudinaryResponse.json();
+        
+        // Step 2: Save metadata to our server
+        const saveResponse = await fetch('/api/save-media', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                url: cloudinaryResult.secure_url,
+                publicId: cloudinaryResult.public_id,
+                originalName: file.name,
+                type: currentMediaType
+            })
+        });
+        
+        const result = await saveResponse.json();
+        
+        if (saveResponse.ok) {
             alert(`${currentMediaType === 'photo' ? 'Photo' : 'Video'} uploaded successfully!`);
             closeAddMediaModal();
         } else {
-            alert(`Error: ${result.error}`);
+            alert(`Error saving media: ${result.error}`);
         }
     } catch (error) {
         console.error('Upload error:', error);
-        alert('Failed to upload media. Please try again.');
+        alert(`Failed to upload media: ${error.message}. Please try again.`);
+    } finally {
+        uploadBtn.textContent = originalText;
+        uploadBtn.disabled = false;
     }
 }
 
