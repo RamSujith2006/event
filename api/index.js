@@ -17,7 +17,7 @@ const isVercel = process.env.VERCEL;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(process.cwd()));
+app.use(express.static(path.join(__dirname, '..')));
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/media-gallery')
@@ -136,22 +136,22 @@ app.delete('/api/media/:id', async (req, res) => {
 
 // Serve static files
 app.get('/', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'index.html'));
+    res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
 app.get('/photos.html', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'photos.html'));
+    res.sendFile(path.join(__dirname, '..', 'photos.html'));
 });
 
 app.get('/videos.html', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'videos.html'));
+    res.sendFile(path.join(__dirname, '..', 'videos.html'));
 });
 
-// Start server
-if (isVercel) {
-    // Export for Vercel
-    module.exports = app;
-} else {
+// Always export for Vercel serverless
+module.exports = app;
+
+// Start server for local development
+if (!isVercel) {
     app.listen(PORT, () => {
         console.log(`Server running on http://localhost:${PORT}`);
         console.log(`Photo gallery: http://localhost:${PORT}/photos.html`);
