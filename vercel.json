@@ -10,10 +10,6 @@
     {
       "src": "/api/(.*)",
       "dest": "/server-mongodb.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/server-mongodb.js"
     }
   ]
 }
