@@ -1,5 +1,5 @@
 // Admin password - change this to your desired password
-const ADMIN_PASSWORD = 'admin123';
+const ADMIN_PASSWORD = 'vilbinvilbinv';
 
 let currentMediaType = '';
 
